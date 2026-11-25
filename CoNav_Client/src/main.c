@@ -8,25 +8,61 @@
 #include "Controller.h"
 #include "XPlaneClient.h"
 
+static int wait_for_retry_or_exit(void)
+{
+    int key;
+
+    printf("\n[R] Retry connection\n");
+    printf("[ESC] Exit\n");
+
+    while (1) {
+        key = _getch();
+
+        if (key == 'r' || key == 'R') {
+            return 1;
+        }
+
+        if (key == 27) {
+            return 0;
+        }
+    }
+}
+
 int main(void)
 {
     char message[128];
     InputEvent event;
 
-    if (!SerialPort_connect("COM5", 9600)) {
-        printf("Failed to connect to Arduino.\n");
-        return 1;
+    /* Arduino connection */
+    while (!SerialPort_connect("COM5", 9600)) {
+
+        printf("\nFailed to connect to Arduino on COM5.\n");
+
+        if (!wait_for_retry_or_exit()) {
+            return 0;
+        }
+
+        printf("\nRetrying Arduino connection...\n");
     }
 
-    if (!XPlaneClient_init("127.0.0.1", 49000)) {
-        printf("Failed to initialize X-Plane UDP client.\n");
-        SerialPort_disconnect();
-        return 1;
+    printf("Arduino connected.\n");
+
+    /* X-Plane UDP initialization */
+    while (!XPlaneClient_init("127.0.0.1", 49000)) {
+
+        printf("\nFailed to initialize X-Plane UDP client.\n");
+
+        if (!wait_for_retry_or_exit()) {
+            SerialPort_disconnect();
+            return 0;
+        }
+
+        printf("\nRetrying X-Plane connection...\n");
     }
 
     Controller_init();
 
-    printf("CoNav connected. Press ESC to exit.\n");
+    printf("\nCoNav connected. Press ESC to exit.\n");
 
     while (SerialPort_is_connected()) {
 
@@ -51,6 +87,8 @@ int main(void)
 
     XPlaneClient_close();
     SerialPort_disconnect();
+
+    printf("\nCoNav shut down.\n");
 
     return 0;
 }

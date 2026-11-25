@@ -8,5 +8,11 @@
 CoNav_Client\build\
 CoNav_Arduino\.pio\
 
-*.ilk
-*.pdb
+.vscode/
+CoNav_Arduino/include
+CoNav_Arduino/lib
+
+.pio/
+build/
+.DS_Store
+Thumbs.db
