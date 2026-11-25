@@ -1,0 +1,12 @@
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+CoNav_Client\build\
+CoNav_Arduino\.pio\
+
+*.ilk
+*.pdb
