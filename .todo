@@ -1,0 +1,7 @@
+- CLI argument for port instead of hard coded COM5 (main l37)
+
+Firmware Arduino
+- Run experiment set direction turns, register time intervals between state changes and wheater it was a false reading (opposite sign as the turn), compute mean, sd, and calculate upper IC 95% to remove false reading bounce (do not assume symmetry between correct reading bounce and false reading bounce).
+
+Serial
+- Change "device" to "port_path" for clarity
