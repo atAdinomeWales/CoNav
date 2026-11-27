@@ -14,8 +14,8 @@ typedef enum {
 typedef enum {
     ENCODER_KHZ = 1,
     ENCODER_MHZ = 2,
-    ENCODER_SNAV = 3,
-    ENCODER_BNAV = 4,
+    ENCODER_BNAV = 3,
+    ENCODER_SNAV = 4,
 } ComEncoderID;
 
 typedef enum {
@@ -24,7 +24,7 @@ typedef enum {
 } NavButtonID;
 
 typedef enum {
-    BUTTON_LNAV = 1,
+    BUTTON_VS = 1,
     BUTTON_HDG = 4
 } ComButtonID;
 

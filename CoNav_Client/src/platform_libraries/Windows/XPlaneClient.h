@@ -29,15 +29,32 @@ typedef enum {
 #define HEADING_CONFIRM_TIMEOUT 2000
 #define HEADING_TOLERANCE 0.25f
 
+#define OBS_NAV1_DATAREF "sim/cockpit2/radios/actuators/nav1_course_deg_mag_pilot"
+
+typedef enum {
+    COM1_FINE_STDBY,
+    NAV1_FINE_STBDY,
+    COM1_COARSE_STDBY,
+    NAV1_COARSE_STBDY,
+    G530_FINE,
+    G530_COARSE,
+    BTTN_CV,
+    BTTN_CRSR,
+    BTTN_LNAV,
+    BTTN_HDG,
+    BTTN_VS,
+    VS
+} CMDS;
+
 // FUNCTIONS
 
 bool XPlaneClient_adjst_rref(char* dataref, int direction);
+bool XPlaneClient_cmd_handler(CMDS cmd, int direction);
 
 bool XPlaneClient_init(const char *ip, unsigned short port);
 bool XPlaneClient_send_command(const char *command);
 
 bool XPlaneClient_adjust_heading(int direction);
-bool XPlaneClient_adjust_com1(int direction);
 
 void XPlaneClient_poll(void);
 void XPlaneClient_close(void);

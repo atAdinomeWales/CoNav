@@ -3,54 +3,99 @@
 #include <stdio.h>
 
 static PanelMode masterMode;
+static bool CvBttn = false;
 
 void Controller_init(void){
     masterMode = MODE_NAV;
     printf("Controller initialized.\n");
 }
 
-static void ModeComHandler(InputEvent event){
+static bool ModeComHandler(InputEvent event){
     bool success = false;
     if (event.type == INPUT_ENCODER){
         switch (event.id){
         case ENCODER_KHZ:
-            success = XPlaneClient_adjust_com1(event.value);
+            if (!CvBttn){
+                success = XPlaneClient_cmd_handler(COM1_FINE_STDBY ,event.value);
+            } else {
+                success = XPlaneClient_cmd_handler(NAV1_FINE_STBDY ,event.value);
+            }
             break;
         case ENCODER_MHZ:
-            success = XPlaneClient_adjust_com1(event.value);
+            if (!CvBttn){
+                success = XPlaneClient_cmd_handler(COM1_COARSE_STDBY ,event.value);
+            } else {
+                success = XPlaneClient_cmd_handler(NAV1_COARSE_STBDY ,event.value);
+            }
             break;
         case ENCODER_SNAV:
-            
+            success = XPlaneClient_cmd_handler(G530_FINE, event.value);
             break;
         case ENCODER_BNAV:
-            
+            success = XPlaneClient_cmd_handler(G530_COARSE, event.value);
             break;
+        
         default:
             printf("Encoder input ID not assigned.\n");
-            return;
+            return false;
         }
     }
+    else if ((event.type == INPUT_BUTTON) && (event.value != 0)){
+        switch (event.id){
+        case BUTTON_PUSH_CV:
+            success = XPlaneClient_cmd_handler(BTTN_CV, 1);
+            if (success) { 
+                CvBttn = !CvBttn;
+            }
+            break;
+        case BUTTON_PUSH_CRSR:
+            success = XPlaneClient_cmd_handler(BTTN_CRSR, 1);
+            break;
+        
+        default:
+            printf("Button input ID not assigned.\n");
+            return false;
+        }
+    }
+    return success;
 }
 
-static void ModeNavHandler(InputEvent event){
+static bool ModeNavHandler(InputEvent event){
+    bool success = false;
     if (event.type == INPUT_ENCODER){
         switch (event.id){
-        case ENCODER_KHZ:
+        case ENCODER_VSP:
+            XPlaneClient_cmd_handler(VS, event.value);
+            break;
+        case ENCODER_BAR:
+            
+            break;
+        case ENCODER_TRK:
+            printf("%d",XPlaneClient_adjst_rref(OBS_NAV1_DATAREF, event.value));
+            break;
+        case ENCODER_HDG:
             XPlaneClient_adjst_rref(HEADING_DATAREF, event.value);
             break;
-        case ENCODER_MHZ:
-            
-            break;
-        case ENCODER_SNAV:
-            
-            break;
-        case ENCODER_BNAV:
-            
-            break;
+
         default:
             printf("Encoder input ID not assigned.\n");
-            return;
+            return false;
         }
+    }
+    else if ((event.type == INPUT_BUTTON) && (event.value != 0)){
+        switch (event.id){
+        case BUTTON_VS:
+            success = XPlaneClient_cmd_handler(BTTN_VS, 1);
+            break;
+        case BUTTON_HDG:
+            success = XPlaneClient_cmd_handler(BTTN_HDG, 1);
+            break;
+        
+        default:
+            printf("Button input ID not assigned.\n");
+            return false;
+        }
+    return success;
     }
 }
 

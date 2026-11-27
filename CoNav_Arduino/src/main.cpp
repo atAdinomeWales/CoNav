@@ -18,6 +18,8 @@ void setup(){
 
   SWT1 = switchInit(1, pSWTCH_MODE);
 
+  switchReport(SWT1, true);
+
   pinMode(LED_BUILTIN, OUTPUT);
 }
 

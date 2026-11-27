@@ -26,10 +26,67 @@ bool XPlaneClient_adjst_rref(char* dataref, int direction){
         return true;
     }
 
-    if(!strcmp(dataref, HEADING_DATAREF)){
+    if (!strcmp(dataref, HEADING_DATAREF)){
         return XPlaneClient_adjust_heading(direction);
+    } else if (!strcmp(dataref, OBS_NAV1_DATAREF)){
+        return false;
     }
 
+
+    return false;
+}
+
+bool XPlaneClient_cmd_handler(CMDS cmd, int direction){
+    if (direction == 0){
+        return true;
+    }
+
+    bool isPositive = (direction > 0);
+
+    switch (cmd){
+    case COM1_COARSE_STDBY:
+        XPlaneClient_send_command(isPositive ? "sim/radios/stby_com1_coarse_up" : "sim/radios/stby_com1_coarse_down");
+        break;
+    case COM1_FINE_STDBY:
+        XPlaneClient_send_command(isPositive ? "sim/radios/stby_com1_fine_up" : "sim/radios/stby_com1_fine_down");
+        break;
+    case NAV1_COARSE_STBDY:
+        XPlaneClient_send_command(isPositive ? "sim/radios/stby_nav1_coarse_up" : "sim/radios/stby_nav1_coarse_down");
+        break;
+    case NAV1_FINE_STBDY:
+        XPlaneClient_send_command(isPositive ? "sim/radios/stby_nav1_fine_up" : "sim/radios/stby_nav1_fine_down");
+        break;
+    case G530_FINE:
+        XPlaneClient_send_command(isPositive ? "sim/GPS/g430n1_page_up" : "sim/GPS/g430n1_page_dn");
+        break;
+    case G530_COARSE:
+        XPlaneClient_send_command(isPositive ? "sim/GPS/g430n1_chapter_up" : "sim/GPS/g430n1_chapter_dn");
+        break;
+    case BTTN_CV:
+        XPlaneClient_send_command("sim/GPS/g430n1_nav_com_tog");
+        break;
+    case BTTN_CRSR:
+        XPlaneClient_send_command("sim/GPS/g430n1_cursor");
+        break;
+    case BTTN_LNAV: // not yet assigned
+        XPlaneClient_send_command("sim/autopilot/gpss");
+        break;
+    case BTTN_HDG:
+        XPlaneClient_send_command("sim/autopilot/heading");
+        break;
+    case BTTN_VS:
+        XPlaneClient_send_command("sim/autopilot/vertical_speed");
+        break;
+    case VS:
+        XPlaneClient_send_command(isPositive ? "sim/autopilot/vertical_speed_up" : "sim/autopilot/vertical_speed_down");
+        break;
+    
+    default:
+        printf("Invalid command ID\n");
+        return false;
+    }
+
+    return true;
 }
 
 static bool send_packet(const char *packet, int length){
@@ -287,19 +344,6 @@ bool XPlaneClient_adjust_heading(int direction){
     heading_pending = true;
 
     return true;
-}
-
-
-bool XPlaneClient_adjust_com1(int direction){
-    if (direction == 0) {
-        return true;
-    }
-
-    return XPlaneClient_send_command(
-        direction > 0
-            ? "sim/radios/stby_com1_coarse_up"
-            : "sim/radios/stby_com1_coarse_down"
-    );
 }
 
 
