@@ -18,6 +18,19 @@ static float pending_heading = 0.0f;
 static bool heading_pending = false;
 static DWORD pending_since = 0;
 
+bool XPlaneClient_adjst_rref(char* dataref, int direction){
+    if (!dataref){
+        return false;
+    }
+    if (direction == 0){
+        return true;
+    }
+
+    if(!strcmp(dataref, HEADING_DATAREF)){
+        return XPlaneClient_adjust_heading(direction);
+    }
+
+}
 
 static bool send_packet(const char *packet, int length){
     if (udp_socket == INVALID_SOCKET) {

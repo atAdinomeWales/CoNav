@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "compontentsHandler.h"
 
+static unsigned long switchLastAction = 0;
 
 encoder* encoderInit(int passId, uint8_t pinClk, uint8_t pinDt, uint8_t pinSw, bool Sw){
   encoder *retEnc = (encoder *)calloc(1, sizeof(encoder));
@@ -81,6 +82,7 @@ bool encoderProcess(encoder* enc){ // Logic for rotation as per a full cycle of 
   }
   enc->lastClk = enc->clk;
   enc->lastDt = enc->dt;
+
   // Rotation logic block over
   
   if (enc->hasSw == false){
@@ -118,6 +120,11 @@ switch_t* switchInit(uint8_t id, uint8_t pin){
 bool switchReport(switch_t* sw, bool forcedReport){
   if (!sw || sw->id == 0) return false;
 
+  unsigned long now = micros();
+  if (switchLastAction != 0 && now - switchLastAction < 100000){
+    return false;
+  }
+
   sw->state = digitalRead(sw->pin);
 
   if (forcedReport){
@@ -130,6 +137,8 @@ bool switchReport(switch_t* sw, bool forcedReport){
     Serial.print("SWT"); Serial.print(sw->id); Serial.print(", "); Serial.println(sw->state);
     sw->lastState = sw->state;
   }
+
+  switchLastAction = now;
 
   return true;
 }

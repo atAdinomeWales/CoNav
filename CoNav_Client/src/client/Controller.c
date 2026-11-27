@@ -2,44 +2,74 @@
 #include "XPlaneClient.h"
 #include <stdio.h>
 
-static EncoderMode encoder1_mode;
+static PanelMode masterMode;
 
 void Controller_init(void){
-    encoder1_mode = MODE_HDG;
+    masterMode = MODE_NAV;
     printf("Controller initialized.\n");
 }
 
-void Controller_handle_event(InputEvent event){
-
-    if (event.type == INPUT_ENCODER) {
-        if (event.id == ENCODER_HDG) {
-            bool success = false;
-
-            switch (encoder1_mode) {
-                case MODE_HDG:
-                    success = XPlaneClient_adjust_heading(event.value);
-                    break;
-
-                case MODE_MHZ:
-                    success = XPlaneClient_adjust_com1(event.value);
-                    break;
-            }
-
-            if (!success) {
-                printf("Failed to send X-Plane command.\n");
-            }
+static void ModeComHandler(InputEvent event){
+    bool success = false;
+    if (event.type == INPUT_ENCODER){
+        switch (event.id){
+        case ENCODER_KHZ:
+            success = XPlaneClient_adjust_com1(event.value);
+            break;
+        case ENCODER_MHZ:
+            success = XPlaneClient_adjust_com1(event.value);
+            break;
+        case ENCODER_SNAV:
+            
+            break;
+        case ENCODER_BNAV:
+            
+            break;
+        default:
+            printf("Encoder input ID not assigned.\n");
+            return;
         }
     }
+}
 
-    else if (event.type == INPUT_BUTTON) {
-        if (event.id == BUTTON_UNASSIGNED_1 && event.value == 1) {
+static void ModeNavHandler(InputEvent event){
+    if (event.type == INPUT_ENCODER){
+        switch (event.id){
+        case ENCODER_KHZ:
+            XPlaneClient_adjst_rref(HEADING_DATAREF, event.value);
+            break;
+        case ENCODER_MHZ:
+            
+            break;
+        case ENCODER_SNAV:
+            
+            break;
+        case ENCODER_BNAV:
+            
+            break;
+        default:
+            printf("Encoder input ID not assigned.\n");
+            return;
+        }
+    }
+}
 
-            encoder1_mode = (encoder1_mode == MODE_HDG)
-                          ? MODE_MHZ
-                          : MODE_HDG;
+void Controller_handle_event(InputEvent event){
+    if (masterMode == MODE_COM){
+        ModeComHandler(event);
+    } else if (masterMode == MODE_NAV){
+        ModeNavHandler(event);
+    }
 
-            printf("ENC1 mode: %s\n",
-                   encoder1_mode == MODE_HDG ? "HDG" : "COM1 MHz");
+    if (event.type == INPUT_SWITCH) {
+        if (event.id == SWITCH_MODE_MASTER) {
+            if (event.value == MODE_COM){
+                masterMode = MODE_COM;
+                printf("Master Mode: COM\n");
+            } else if (event.value == MODE_NAV){
+                masterMode = MODE_NAV;
+                printf("Master Mode: NAV\n");
+            }
         }
     }
 }

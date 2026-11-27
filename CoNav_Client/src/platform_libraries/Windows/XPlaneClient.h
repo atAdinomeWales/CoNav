@@ -31,6 +31,8 @@ typedef enum {
 
 // FUNCTIONS
 
+bool XPlaneClient_adjst_rref(char* dataref, int direction);
+
 bool XPlaneClient_init(const char *ip, unsigned short port);
 bool XPlaneClient_send_command(const char *command);
 
