@@ -4,6 +4,33 @@
 
 #include <stdbool.h>
 
+// VALUES
+
+#define LOCAL_UDP_PORT 49005
+#define XPLANE_UDP_PORT 49000
+#define UDP_BUFFER_SIZE 2048
+
+#define RREF_PACKET_SIZE 413
+#define DREF_PACKET_SIZE 509
+#define CMND_PACKET_SIZE 260
+
+#define RREF_RATE_FAST  20
+#define RREF_RATE_NORMAL 10
+#define RREF_RATE_SLOW   1
+
+
+typedef enum {
+    RREFID_HEADING = 1,
+    RREFID_COM1 = 2,
+    RREFID_COM2 = 3
+} RREFID;
+
+#define HEADING_DATAREF "sim/cockpit2/autopilot/heading_dial_deg_mag_pilot"
+#define HEADING_CONFIRM_TIMEOUT 2000
+#define HEADING_TOLERANCE 0.25f
+
+// FUNCTIONS
+
 bool XPlaneClient_init(const char *ip, unsigned short port);
 bool XPlaneClient_send_command(const char *command);
 

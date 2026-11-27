@@ -8,8 +8,9 @@
 #include "Controller.h"
 #include "XPlaneClient.h"
 
-static int wait_for_retry_or_exit(void)
-{
+#define CONAV_USB_PORT "COM5"
+
+static int wait_for_retry_or_exit(void){
     int key;
 
     printf("\n[R] Retry connection\n");
@@ -28,15 +29,14 @@ static int wait_for_retry_or_exit(void)
     }
 }
 
-int main(void)
-{
+int main(void){
     char message[128];
     InputEvent event;
 
     /* Arduino connection */
-    while (!SerialPort_connect("COM5", 9600)) {
+    while (!SerialPort_connect(CONAV_USB_PORT, 9600)) {
 
-        printf("\nFailed to connect to Arduino on COM5.\n");
+        printf("\nFailed to connect to Arduino on %s.\n", CONAV_USB_PORT);
 
         if (!wait_for_retry_or_exit()) {
             return 0;
@@ -44,12 +44,9 @@ int main(void)
 
         printf("\nRetrying Arduino connection...\n");
     }
-
     printf("Arduino connected.\n");
 
-    /* X-Plane UDP initialization */
-    while (!XPlaneClient_init("127.0.0.1", 49000)) {
-
+    while (!XPlaneClient_init("127.0.0.1", XPLANE_UDP_PORT)) {
         printf("\nFailed to initialize X-Plane UDP client.\n");
 
         if (!wait_for_retry_or_exit()) {
@@ -61,11 +58,9 @@ int main(void)
     }
 
     Controller_init();
-
     printf("\nCoNav connected. Press ESC to exit.\n");
 
     while (SerialPort_is_connected()) {
-
         if (_kbhit() && _getch() == 27) {
             break;
         }
@@ -73,7 +68,6 @@ int main(void)
         XPlaneClient_poll();
 
         if (SerialPort_read_line(message, sizeof(message))) {
-
             if (InputParser_parse(message, &event)) {
                 Controller_handle_event(event);
             }

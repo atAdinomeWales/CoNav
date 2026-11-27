@@ -6,28 +6,6 @@
 #include <stdint.h>
 #include <math.h>
 
-#define LOCAL_UDP_PORT 49005
-#define UDP_BUFFER_SIZE 2048
-
-#define RREF_PACKET_SIZE 413
-#define DREF_PACKET_SIZE 509
-#define CMND_PACKET_SIZE 260
-
-#define RREF_RATE_FAST  20
-#define RREF_RATE_NORMAL 10
-#define RREF_RATE_SLOW   1
-
-
-typedef enum {
-    RREFID_HEADING = 1,
-    RREFID_COM1 = 2,
-    RREFID_COM2 = 3
-} RREFID;
-
-#define HEADING_DATAREF "sim/cockpit2/autopilot/heading_dial_deg_mag_pilot"
-#define HEADING_CONFIRM_TIMEOUT 2000
-#define HEADING_TOLERANCE 0.25f
-
 
 static SOCKET udp_socket = INVALID_SOCKET;
 static struct sockaddr_in xplane_address;
@@ -39,7 +17,6 @@ static bool heading_valid = false;
 static float pending_heading = 0.0f;
 static bool heading_pending = false;
 static DWORD pending_since = 0;
-
 
 
 static bool send_packet(const char *packet, int length){
@@ -265,9 +242,7 @@ void XPlaneClient_poll(void){
 
     DWORD now = GetTickCount();
 
-    if (heading_pending &&
-        now - pending_since >= HEADING_CONFIRM_TIMEOUT) {
-
+    if (heading_pending && now - pending_since >= HEADING_CONFIRM_TIMEOUT) {
         heading_pending = false;
     }
 }

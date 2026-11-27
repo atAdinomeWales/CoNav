@@ -4,8 +4,7 @@
 
 static HANDLE serial_handle = INVALID_HANDLE_VALUE;
 
-bool SerialPort_connect(const char *port, DWORD baud_rate)
-{
+bool SerialPort_connect(const char *port, DWORD baud_rate){
     char device[32];
 
     snprintf(device, sizeof(device), "\\\\.\\%s", port);
@@ -53,13 +52,11 @@ bool SerialPort_connect(const char *port, DWORD baud_rate)
     return true;
 }
 
-bool SerialPort_is_connected(void)
-{
+bool SerialPort_is_connected(void){
     return serial_handle != INVALID_HANDLE_VALUE;
 }
 
-bool SerialPort_read_line(char *buffer, DWORD buffer_size)
-{
+bool SerialPort_read_line(char *buffer, DWORD buffer_size){
     static DWORD position = 0;
 
     if (!SerialPort_is_connected() || buffer_size < 2)
@@ -85,8 +82,7 @@ bool SerialPort_read_line(char *buffer, DWORD buffer_size)
     return false;
 }
 
-void SerialPort_disconnect(void)
-{
+void SerialPort_disconnect(void){
     if (SerialPort_is_connected()) {
         CloseHandle(serial_handle);
         serial_handle = INVALID_HANDLE_VALUE;
