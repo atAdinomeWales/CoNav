@@ -13,10 +13,21 @@ static bool winsock_started = false;
 
 static float current_heading = 0.0f;
 static bool heading_valid = false;
-
 static float pending_heading = 0.0f;
 static bool heading_pending = false;
 static DWORD pending_since = 0;
+
+static float Acurrent_obs1 = 0.0f;
+static bool Aobs1_valid = false;
+static float Apending_obs1 = 0.0f;
+static bool Aobs1_pending = false;
+static DWORD Aobs1pending_since = 0;
+
+static float Bcurrent_obs1 = 0.0f;
+static bool Bobs1_valid = false;
+static float Bpending_obs1 = 0.0f;
+static bool Bobs1_pending = false;
+static DWORD Bobs1pending_since = 0;
 
 bool XPlaneClient_adjst_rref(char* dataref, int direction){
     if (!dataref){
@@ -27,9 +38,11 @@ bool XPlaneClient_adjst_rref(char* dataref, int direction){
     }
 
     if (!strcmp(dataref, HEADING_DATAREF)){
-        return XPlaneClient_adjust_heading(direction);
-    } else if (!strcmp(dataref, OBS_NAV1_DATAREF)){
-        return false;
+        return XPlaneClient_adjust_dataref_bearing(RREFID_HEADING, direction);
+    } else if (!strcmp(dataref, OBS_NAV1_DATAREF1)){
+        return XPlaneClient_adjust_dataref_bearing(RREFID_OBS1_1, direction);
+    } else if (!strcmp(dataref, OBS_NAV1_DATAREF2)){
+        return XPlaneClient_adjust_dataref_bearing(RREFID_OBS1_2, direction);
     }
 
 
@@ -128,11 +141,11 @@ static float heading_difference(float a, float b){
 }
 
 
-static bool request_heading(void){
+static bool request_rreff(RREFID id, int freq){
     char packet[RREF_PACKET_SIZE] = {0};
 
-    int32_t frequency = RREF_RATE_FAST;
-    int32_t index = RREFID_HEADING;
+    int32_t frequency = freq;
+    int32_t index = id;
 
     memcpy(packet, "RREF", 4);
     packet[4] = '\0';
@@ -140,26 +153,63 @@ static bool request_heading(void){
     memcpy(packet + 5, &frequency, sizeof(frequency));
     memcpy(packet + 9, &index, sizeof(index));
 
-    memcpy(packet + 13, HEADING_DATAREF, strlen(HEADING_DATAREF));
+    switch (id){
+    case RREFID_HEADING:
+        memcpy(packet + 13, HEADING_DATAREF, strlen(HEADING_DATAREF));
+        break;
+    case RREFID_OBS1_1:
+        memcpy(packet + 13, OBS_NAV1_DATAREF1, strlen(OBS_NAV1_DATAREF1));
+        break;
+    case RREFID_OBS1_2:
+        memcpy(packet + 13, OBS_NAV1_DATAREF2, strlen(OBS_NAV1_DATAREF2));
+        break;
+
+    default:
+        printf("invalid RREF id for UDP request\n");
+        return false;
+    }
 
     return send_packet(packet, sizeof(packet));
 }
 
-static bool write_heading(float heading){
+static bool write_dref(RREFID id, float value){
     char packet[DREF_PACKET_SIZE] = {0};
 
     memcpy(packet, "DREF", 4);
     packet[4] = '\0';
 
-    memcpy(packet + 5, &heading, sizeof(heading));
-    memcpy(packet + 9, HEADING_DATAREF, sizeof(HEADING_DATAREF));
+    memcpy(packet + 5, &value, sizeof(value));
+
+    switch (id){
+    case RREFID_HEADING:
+        memcpy(packet + 9, HEADING_DATAREF, sizeof(HEADING_DATAREF));
+        break;
+    case RREFID_OBS1_1:
+        memcpy(packet + 9, OBS_NAV1_DATAREF1, sizeof(OBS_NAV1_DATAREF1));
+        break;
+    case RREFID_OBS1_2:
+        memcpy(packet + 9, OBS_NAV1_DATAREF2, sizeof(OBS_NAV1_DATAREF2));
+        break;
+
+    default:
+        printf("invalid RREF id for DREF write\n");
+        return false;
+    }
 
     return send_packet(packet, sizeof(packet));
 }
 
 static bool XPlaneClient_init_subscriptions(void){
-    if (!request_heading()) {
+    if (!request_rreff(RREFID_HEADING, RREF_RATE_FAST)) {
         printf("Failed to request heading dataref.\n");
+        return false;
+    }
+    if (!request_rreff(RREFID_OBS1_1, RREF_RATE_FAST)){
+        printf("Failed to request OBS NAV 1 dataref.\n");
+        return false;
+    }
+    if (!request_rreff(RREFID_OBS1_2, RREF_RATE_FAST)){
+        printf("Failed to request OBS NAV 1 dataref.\n");
         return false;
     }
 
@@ -269,6 +319,20 @@ static void process_rref_packet(const char *packet, int received){
             if (heading_pending && fabsf(heading_difference(value, pending_heading)) <= HEADING_TOLERANCE) {
                 heading_pending = false;
             }
+        } else if (index == RREFID_OBS1_1 && value >= 0.0f && value <= 360.0f) {
+            Acurrent_obs1 = value;
+            Aobs1_valid = true;
+
+            if (Aobs1_pending && fabsf(heading_difference(value, Apending_obs1)) <= HEADING_TOLERANCE) {
+                Aobs1_pending = false;
+            }
+        } else if (index == RREFID_OBS1_2 && value >= 0.0f && value <= 360.0f) {
+            Bcurrent_obs1 = value;
+            Bobs1_valid = true;
+
+            if (Bobs1_pending && fabsf(heading_difference(value, Bpending_obs1)) <= HEADING_TOLERANCE) {
+                Bobs1_pending = false;
+            }
         }
     }
     return;
@@ -312,38 +376,92 @@ void XPlaneClient_poll(void){
 
     DWORD now = GetTickCount();
 
-    if (heading_pending && now - pending_since >= HEADING_CONFIRM_TIMEOUT) {
+    if (heading_pending && now - pending_since >= CONFIRM_TIMEOUT) {
         heading_pending = false;
+    }
+    if (Aobs1_pending && now - Aobs1pending_since >= CONFIRM_TIMEOUT) {
+        Aobs1_pending = false;
+    }
+    if (Bobs1_pending && now - Bobs1pending_since >= CONFIRM_TIMEOUT) {
+        Bobs1_pending = false;
     }
 }
 
 
-bool XPlaneClient_adjust_heading(int direction){
+bool XPlaneClient_adjust_dataref_bearing(RREFID id, int direction){
     if (direction == 0) {
         return true;
     }
 
-    if (!heading_valid) {
-        return false;
+    if (id == RREFID_HEADING){
+        if (!heading_valid) {
+            return false;
+        }
+
+        float base_heading = heading_pending
+                        ? pending_heading
+                        : current_heading;
+
+        float new_heading = normalize_heading(
+            base_heading + (float)direction
+        );
+
+        if (!write_dref(RREFID_HEADING, new_heading)) {
+            return false;
+        }
+
+        pending_heading = new_heading;
+        pending_since = GetTickCount();
+        heading_pending = true;
+
+        return true;
+    } else if (id == RREFID_OBS1_1){
+        if (!Aobs1_valid) {
+            return false;
+        }
+
+        float base_obs1 = Aobs1_pending
+                        ? Apending_obs1
+                        : Acurrent_obs1;
+
+        float new_obs1 = normalize_heading(
+            base_obs1 + (float)direction
+        );
+
+        if (!write_dref(RREFID_OBS1_1, new_obs1)) {
+            return false;
+        }
+
+        Apending_obs1 = new_obs1;
+        pending_since = GetTickCount();
+        Aobs1_pending = true;
+
+        return true;
+    } else if (id == RREFID_OBS1_2){
+        if (!Bobs1_valid) {
+            return false;
+        }
+
+        float base_obs1 = Bobs1_pending
+                        ? Bpending_obs1
+                        : Bcurrent_obs1;
+
+        float new_obs1 = normalize_heading(
+            base_obs1 + (float)direction
+        );
+
+        if (!write_dref(RREFID_OBS1_2, new_obs1)) {
+            return false;
+        }
+
+        Bpending_obs1 = new_obs1;
+        pending_since = GetTickCount();
+        Bobs1_pending = true;
+
+        return true;
     }
 
-    float base_heading = heading_pending
-                       ? pending_heading
-                       : current_heading;
-
-    float new_heading = normalize_heading(
-        base_heading + (float)direction
-    );
-
-    if (!write_heading(new_heading)) {
-        return false;
-    }
-
-    pending_heading = new_heading;
-    pending_since = GetTickCount();
-    heading_pending = true;
-
-    return true;
+    return false;
 }
 
 
@@ -357,7 +475,4 @@ void XPlaneClient_close(void){
         WSACleanup();
         winsock_started = false;
     }
-
-    heading_valid = false;
-    heading_pending = false;
 }

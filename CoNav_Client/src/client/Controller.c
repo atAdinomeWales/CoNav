@@ -71,7 +71,8 @@ static bool ModeNavHandler(InputEvent event){
             
             break;
         case ENCODER_TRK:
-            printf("%d",XPlaneClient_adjst_rref(OBS_NAV1_DATAREF, event.value));
+            XPlaneClient_adjst_rref(OBS_NAV1_DATAREF1, event.value);
+            XPlaneClient_adjst_rref(OBS_NAV1_DATAREF2, event.value);
             break;
         case ENCODER_HDG:
             XPlaneClient_adjst_rref(HEADING_DATAREF, event.value);
