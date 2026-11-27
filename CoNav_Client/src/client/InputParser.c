@@ -30,5 +30,16 @@ bool InputParser_parse(const char *line, InputEvent *event) {
         return true;
     }
 
+    unsigned int switchId;
+    unsigned int switchValue;
+
+    if (sscanf(line, "SWT%u, %u", &switchId, &switchValue) == 2) {
+        event->type = INPUT_SWITCH;
+        event->id = switchId;
+        event->value = switchValue;
+        
+        return true;
+    }
+
     return false;
 }

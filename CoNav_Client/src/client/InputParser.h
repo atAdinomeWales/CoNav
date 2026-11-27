@@ -5,7 +5,8 @@
 
 typedef enum {
     INPUT_ENCODER,
-    INPUT_BUTTON
+    INPUT_BUTTON,
+    INPUT_SWITCH
 } InputType;
 
 typedef struct {

@@ -1,4 +1,3 @@
-
 #include "XPlaneClient.h"
 #include <winsock2.h>
 #include <windows.h>
@@ -7,13 +6,28 @@
 #include <stdint.h>
 #include <math.h>
 
-#define HEADING_DATAREF "sim/cockpit2/autopilot/heading_dial_deg_mag_pilot"
-#define HEADING_RREF_ID 1
-#define HEADING_RREF_RATE 10
-
 #define LOCAL_UDP_PORT 49005
+#define UDP_BUFFER_SIZE 2048
+
+#define RREF_PACKET_SIZE 413
+#define DREF_PACKET_SIZE 509
+#define CMND_PACKET_SIZE 260
+
+#define RREF_RATE_FAST  20
+#define RREF_RATE_NORMAL 10
+#define RREF_RATE_SLOW   1
+
+
+typedef enum {
+    RREFID_HEADING = 1,
+    RREFID_COM1 = 2,
+    RREFID_COM2 = 3
+} RREFID;
+
+#define HEADING_DATAREF "sim/cockpit2/autopilot/heading_dial_deg_mag_pilot"
 #define HEADING_CONFIRM_TIMEOUT 2000
 #define HEADING_TOLERANCE 0.25f
+
 
 static SOCKET udp_socket = INVALID_SOCKET;
 static struct sockaddr_in xplane_address;
@@ -27,8 +41,8 @@ static bool heading_pending = false;
 static DWORD pending_since = 0;
 
 
-static bool send_packet(const char *packet, int length)
-{
+
+static bool send_packet(const char *packet, int length){
     if (udp_socket == INVALID_SOCKET) {
         return false;
     }
@@ -44,9 +58,8 @@ static bool send_packet(const char *packet, int length)
 }
 
 
-static float normalize_heading(float heading)
-{
-    while (heading >= 360.0f) {
+static float normalize_heading(float heading){
+    while (heading >= 360.0f){
         heading -= 360.0f;
     }
 
@@ -57,9 +70,7 @@ static float normalize_heading(float heading)
     return heading;
 }
 
-
-static float heading_difference(float a, float b)
-{
+static float heading_difference(float a, float b){
     float difference = normalize_heading(a - b);
 
     if (difference > 180.0f) {
@@ -70,12 +81,11 @@ static float heading_difference(float a, float b)
 }
 
 
-static bool request_heading(void)
-{
-    char packet[413] = {0};
+static bool request_heading(void){
+    char packet[RREF_PACKET_SIZE] = {0};
 
-    int32_t frequency = HEADING_RREF_RATE;
-    int32_t index = HEADING_RREF_ID;
+    int32_t frequency = RREF_RATE_FAST;
+    int32_t index = RREFID_HEADING;
 
     memcpy(packet, "RREF", 4);
     packet[4] = '\0';
@@ -83,30 +93,33 @@ static bool request_heading(void)
     memcpy(packet + 5, &frequency, sizeof(frequency));
     memcpy(packet + 9, &index, sizeof(index));
 
-    memcpy(packet + 13, HEADING_DATAREF,
-           strlen(HEADING_DATAREF));
+    memcpy(packet + 13, HEADING_DATAREF, strlen(HEADING_DATAREF));
 
     return send_packet(packet, sizeof(packet));
 }
 
-
-static bool write_heading(float heading)
-{
-    char packet[509] = {0};
+static bool write_heading(float heading){
+    char packet[DREF_PACKET_SIZE] = {0};
 
     memcpy(packet, "DREF", 4);
     packet[4] = '\0';
 
     memcpy(packet + 5, &heading, sizeof(heading));
-    memcpy(packet + 9, HEADING_DATAREF,
-           sizeof(HEADING_DATAREF));
+    memcpy(packet + 9, HEADING_DATAREF, sizeof(HEADING_DATAREF));
 
     return send_packet(packet, sizeof(packet));
 }
 
+static bool XPlaneClient_init_subscriptions(void){
+    if (!request_heading()) {
+        printf("Failed to request heading dataref.\n");
+        return false;
+    }
 
-bool XPlaneClient_init(const char *ip, unsigned short port)
-{
+    return true;
+}
+
+bool XPlaneClient_init(const char *ip, unsigned short port){
     WSADATA wsa;
 
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
@@ -130,19 +143,13 @@ bool XPlaneClient_init(const char *ip, unsigned short port)
     local_address.sin_port = htons(LOCAL_UDP_PORT);
     local_address.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(
-            udp_socket,
-            (struct sockaddr *)&local_address,
-            sizeof(local_address)
-        ) == SOCKET_ERROR) {
-
+    if (bind(udp_socket, (struct sockaddr *)&local_address, sizeof(local_address)) == SOCKET_ERROR){
         printf("UDP bind failed: %d\n", WSAGetLastError());
         XPlaneClient_close();
         return false;
     }
 
     memset(&xplane_address, 0, sizeof(xplane_address));
-
     xplane_address.sin_family = AF_INET;
     xplane_address.sin_port = htons(port);
     xplane_address.sin_addr.s_addr = inet_addr(ip);
@@ -158,15 +165,13 @@ bool XPlaneClient_init(const char *ip, unsigned short port)
     if (ioctlsocket(udp_socket, FIONBIO, &nonblocking)
         == SOCKET_ERROR) {
 
-        printf("Failed to configure nonblocking UDP socket: %d\n",
-               WSAGetLastError());
+        printf("Failed to configure nonblocking UDP socket: %d\n", WSAGetLastError());
 
         XPlaneClient_close();
         return false;
     }
 
-    if (!request_heading()) {
-        printf("Failed to request heading dataref.\n");
+    if (!XPlaneClient_init_subscriptions()) {
         XPlaneClient_close();
         return false;
     }
@@ -175,13 +180,12 @@ bool XPlaneClient_init(const char *ip, unsigned short port)
 }
 
 
-bool XPlaneClient_send_command(const char *command)
-{
+bool XPlaneClient_send_command(const char *command){
     if (udp_socket == INVALID_SOCKET || command == NULL) {
         return false;
     }
 
-    char packet[260];
+    char packet[CMND_PACKET_SIZE];
     size_t command_length = strlen(command);
 
     if (command_length > sizeof(packet) - 6) {
@@ -196,8 +200,7 @@ bool XPlaneClient_send_command(const char *command)
 }
 
 
-static void process_rref_packet(const char *packet, int received)
-{
+static void process_rref_packet(const char *packet, int received){
     if (received < 13) {
         return;
     }
@@ -209,34 +212,30 @@ static void process_rref_packet(const char *packet, int received)
 
         memcpy(&index, packet + offset, sizeof(index));
         memcpy(&value, packet + offset + 4, sizeof(value));
+        
+        // BEGINING OF DIFERENTIAL PROCESSING
 
-        if (index == HEADING_RREF_ID &&
-            value >= 0.0f && value <= 360.0f) {
-
+        if (index == RREFID_HEADING && value >= 0.0f && value <= 360.0f) {
             current_heading = value;
             heading_valid = true;
 
-            if (heading_pending &&
-                fabsf(heading_difference(value, pending_heading))
-                    <= HEADING_TOLERANCE) {
-
+            if (heading_pending && fabsf(heading_difference(value, pending_heading)) <= HEADING_TOLERANCE) {
                 heading_pending = false;
             }
         }
     }
+    return;
 }
 
 
-void XPlaneClient_poll(void)
-{
+void XPlaneClient_poll(void){
     if (udp_socket == INVALID_SOCKET) {
         return;
     }
 
-    char packet[2048];
+    char packet[UDP_BUFFER_SIZE];
 
     for (;;) {
-
         struct sockaddr_in sender;
         int sender_length = sizeof(sender);
 
@@ -250,7 +249,6 @@ void XPlaneClient_poll(void)
         );
 
         if (received == SOCKET_ERROR) {
-
             int error = WSAGetLastError();
 
             if (error != WSAEWOULDBLOCK) {
@@ -275,8 +273,7 @@ void XPlaneClient_poll(void)
 }
 
 
-bool XPlaneClient_adjust_heading(int direction)
-{
+bool XPlaneClient_adjust_heading(int direction){
     if (direction == 0) {
         return true;
     }
@@ -305,8 +302,7 @@ bool XPlaneClient_adjust_heading(int direction)
 }
 
 
-bool XPlaneClient_adjust_com1(int direction)
-{
+bool XPlaneClient_adjust_com1(int direction){
     if (direction == 0) {
         return true;
     }
@@ -319,8 +315,7 @@ bool XPlaneClient_adjust_com1(int direction)
 }
 
 
-void XPlaneClient_close(void)
-{
+void XPlaneClient_close(void){
     if (udp_socket != INVALID_SOCKET) {
         closesocket(udp_socket);
         udp_socket = INVALID_SOCKET;

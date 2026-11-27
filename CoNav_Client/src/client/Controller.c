@@ -1,26 +1,21 @@
-
 #include "Controller.h"
 #include "XPlaneClient.h"
 #include <stdio.h>
 
 static EncoderMode encoder1_mode;
 
-void Controller_init(void)
-{
+void Controller_init(void){
     encoder1_mode = MODE_HDG;
-    printf("Controller initialized. ENC1: HDG\n");
+    printf("Controller initialized.\n");
 }
 
-void Controller_handle_event(InputEvent event)
-{
+void Controller_handle_event(InputEvent event){
+
     if (event.type == INPUT_ENCODER) {
-
         if (event.id == ENCODER_HDG) {
-
             bool success = false;
 
             switch (encoder1_mode) {
-
                 case MODE_HDG:
                     success = XPlaneClient_adjust_heading(event.value);
                     break;
@@ -37,7 +32,6 @@ void Controller_handle_event(InputEvent event)
     }
 
     else if (event.type == INPUT_BUTTON) {
-
         if (event.id == BUTTON_UNASSIGNED_1 && event.value == 1) {
 
             encoder1_mode = (encoder1_mode == MODE_HDG)
