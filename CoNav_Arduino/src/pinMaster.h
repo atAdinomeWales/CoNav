@@ -10,4 +10,13 @@
 #define pENC2_CLK 5
 #define pENC2_DT 6
 
+#define pENC3_CLK 7
+#define pENC3_DT 8
+
+#define pENC4_CLK 9
+#define pENC4_DT 10
+#define pENC4_SW 11
+
+#define pSWTCH_MODE 12
+
 #endif//PIN_MASTER

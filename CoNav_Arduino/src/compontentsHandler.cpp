@@ -36,7 +36,7 @@ void encoderRead(encoder *enc){
   return;
 }
 
-void encoderReport(bool positive, encoder* enc){
+void encoderReport(encoder* enc, bool positive){
   if (!enc) return;
 
   unsigned long now = micros();
@@ -72,10 +72,10 @@ bool encoderProcess(encoder* enc){ // Logic for rotation as per a full cycle of 
     }
 
     if (enc->position >= 4){
-      encoderReport(true, enc);
+      encoderReport(enc, true);
       enc->position = 0;
     } else if (enc->position <= -4){
-      encoderReport(false, enc);
+      encoderReport(enc, false);
       enc->position = 0;
     }
   }
@@ -99,5 +99,37 @@ bool encoderProcess(encoder* enc){ // Logic for rotation as per a full cycle of 
 
     enc->lastSw = enc->sw;
   }
+  return true;
+}
+
+switch_t* switchInit(uint8_t id, uint8_t pin){
+  switch_t* sw = (switch_t*)malloc(sizeof(switch_t));
+  if (!sw) return NULL;
+
+  sw->id = id;
+  sw->pin = pin;
+  pinMode(pin, INPUT_PULLUP);
+  sw->state = digitalRead(id);
+  sw->lastState = sw->state;
+
+  return sw;
+}
+
+bool switchReport(switch_t* sw, bool forcedReport){
+  if (!sw || sw->id == 0) return false;
+
+  sw->state = digitalRead(sw->pin);
+
+  if (forcedReport){
+    Serial.print("SWT"); Serial.print(sw->id); Serial.print(", "); Serial.println(sw->state);
+    sw->lastState = sw->state;
+    return true;
+  }
+
+  if (sw->lastState != sw->state){
+    Serial.print("SWT"); Serial.print(sw->id); Serial.print(", "); Serial.println(sw->state);
+    sw->lastState = sw->state;
+  }
+
   return true;
 }
